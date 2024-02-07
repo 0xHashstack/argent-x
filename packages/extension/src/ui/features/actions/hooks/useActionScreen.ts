@@ -9,13 +9,20 @@ import { currentActionView, isLastActionView } from "../../../views/actions"
 import { useView } from "../../../views/implementation/react"
 import { focusExtensionTab, useExtensionIsInTab } from "../../browser/tabs"
 import { getOriginatingHost } from "../../browser/useOriginatingHost"
+import { ActionItem, ExtQueueItem } from "../../../../shared/actionQueue/types"
+import { actionQueue } from "../../../../shared/actionQueue"
 
 export const useActionScreen = () => {
   const selectedAccount = useView(selectedAccountView)
   const extensionIsInTab = useExtensionIsInTab()
 
-  const action = useView(currentActionView)
+  let action = useView(currentActionView)
   const isLastAction = useView(isLastActionView)
+
+  const updateAction = async (_action: ExtQueueItem<ActionItem>) => {
+    action = _action
+    await actionQueue.updateItem(_action.meta.hash, _action)
+  }
 
   const closePopupIfLastAction = useCallback(() => {
     if (isLastAction) {
@@ -77,5 +84,6 @@ export const useActionScreen = () => {
     rejectWithoutClose: reject,
     rejectAllActions,
     closePopupIfLastAction,
+    updateAction,
   }
 }

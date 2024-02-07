@@ -21,7 +21,7 @@ import { WalletAccount } from "../../../../../shared/wallet.model"
 import { formatTruncatedAddress } from "../../../../services/addresses"
 
 export interface ConfirmPageProps {
-  onSubmit?: (e: FormEvent<HTMLFormElement>) => void
+  onSubmit?: (spendBorrow: any) => void
   onReject?: () => void
   selectedAccount?: WalletAccount
 }
@@ -40,6 +40,8 @@ export interface ConfirmScreenProps
   switchButtonOrder?: boolean
   showHeader?: boolean
   showConfirmButton?: boolean
+  showSpendConfirmButton?: boolean
+  spendButtonLoading?: boolean
   px?: string
   footer?: ReactNode
   destructive?: boolean
@@ -62,6 +64,8 @@ export const ConfirmScreen: FC<ConfirmScreenProps> = ({
   switchButtonOrder = false,
   showHeader = true,
   showConfirmButton = true,
+  showSpendConfirmButton = false,
+  spendButtonLoading,
   hideFooter = false,
   footer,
   children,
@@ -84,13 +88,7 @@ export const ConfirmScreen: FC<ConfirmScreenProps> = ({
     <>
       {navigationBar}
       <ScrollContainer>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            return onSubmit?.(e)
-          }}
-          {...props}
-        >
+        <form {...props}>
           <Flex
             pt={accountHeader || navigationBar ? "0" : "18px"}
             px="16px"
@@ -147,8 +145,30 @@ export const ConfirmScreen: FC<ConfirmScreenProps> = ({
                           type="submit"
                           isLoading={confirmButtonIsLoading}
                           loadingText={confirmButtonLoadingText}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            return onSubmit?.(false)
+                          }}
                         >
-                          {confirmButtonText}
+                          {confirmButtonText} (Personal funds)
+                        </Button>
+                      )}
+                      {showConfirmButton && (
+                        <Button
+                          isDisabled={!showSpendConfirmButton}
+                          colorScheme={destructive ? "danger" : "primary"}
+                          w="full"
+                          type="submit"
+                          isLoading={spendButtonLoading}
+                          loadingText={confirmButtonLoadingText}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            return onSubmit?.(true)
+                          }}
+                        >
+                          {showSpendConfirmButton
+                            ? "Spend Borrow"
+                            : "Spend not allowed"}
                         </Button>
                       )}
                     </Flex>

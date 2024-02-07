@@ -1,6 +1,6 @@
 import { ButtonCell, P4, SpacerCell, Switch, icons } from "@argent/ui"
 import { Spinner } from "@chakra-ui/react"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { settingsStore } from "../../../shared/settings"
@@ -26,11 +26,14 @@ const { ExpandIcon, ArgentShieldIcon } = icons
 export const AccountEditButtons = () => {
   const currentNetwork = useCurrentNetwork()
   const navigate = useNavigate()
-  const account = useRouteAccount()
+  const account: any = useRouteAccount()
   const accountAddress = account?.address ?? ""
   const blockExplorerTitle = useBlockExplorerTitle()
   const liveAccountGuardianState = useLiveAccountGuardianState(account)
 
+  useEffect(() => {
+    console.log("account info", account?.signer)
+  }, [account])
   const { feeTokenBalance } = useFeeTokenBalance(account)
 
   const canDeployAccount = useMemo(

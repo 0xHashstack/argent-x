@@ -70,6 +70,7 @@ export default class BackgroundTransactionReviewService
     calls: Call[]
     isDeployed: boolean
   }) {
+    console.log("debug", "fetchFeesOnchain")
     try {
       const selectedAccount = await this.wallet.getSelectedAccount()
       const oldAccountTransactions = transactionCallsAdapter(calls)
@@ -283,6 +284,44 @@ export default class BackgroundTransactionReviewService
         },
         simulateAndReviewSchema,
       )
+      const allCalls: Call[] = transactions.reduce(
+        (accumulator: Call[], value: TransactionReviewTransactions) => {
+          let calls: Call[] = []
+          if (value.calls) {
+            if (Array.isArray(value.calls)) {
+              calls = value.calls
+            } else {
+              calls = [value.calls]
+            }
+          }
+          return accumulator.concat(calls)
+        },
+        [],
+      )
+      const signerDetails = {
+        walletAddress: account.address,
+        nonce,
+        maxFee: 0n,
+        version,
+        chainId,
+        cairoVersion: account.cairoVersion,
+      }
+      const invocation = await account.buildInvocation(allCalls, signerDetails)
+      // const feeEstimate = await account.getEstimateFee(invocation, {
+      //   nonce
+      // }, 'pending');
+
+      // // ! VT: POC
+      // // for now, setting same fee for all txs. This can lead to excess compute, but quick hack
+      // // to skip argent api for estimation
+      // for(let i=0; i<result.transactions.length; ++i) {
+      //   const sim = result.transactions[i].simulation
+      //   if (sim) {
+      //     sim.feeEstimation.overallFee = feeEstimate.overall_fee?.toString() || '0';
+      //     sim.feeEstimation.maxFee = feeEstimate.suggestedMaxFee?.toString() || ((feeEstimate.overall_fee || BigInt(10**14)) * 2n)?.toString();
+      //   }
+      // }
+
       const enrichedFeeEstimation = await this.getEnrichedFeeEstimation(
         transactions,
         result,

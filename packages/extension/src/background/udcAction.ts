@@ -69,6 +69,7 @@ export const udcDeclareContract = async (
     ))
   ) {
     if ("estimateFeeBulk" in starknetAccount) {
+      console.log("debug", "estimateFeeBulk")
       const bulkTransactions: Invocations = [
         {
           type: TransactionType.DEPLOY_ACCOUNT,
@@ -199,6 +200,7 @@ export const udcDeployContract = async (
     ))
   ) {
     if ("estimateFeeBulk" in starknetAccount) {
+      console.log("debug", "estimateFeeBulk2")
       const bulkTransactions: Invocations = [
         {
           type: TransactionType.DEPLOY_ACCOUNT,

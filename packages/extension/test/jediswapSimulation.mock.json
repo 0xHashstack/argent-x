@@ -29,7 +29,7 @@
         "0x63e14707"
       ],
       "call_type": "CALL",
-      "class_hash": "0x25ec026985a3bf9d0cc1fe17326b245dfdc3ff89b8fde106542a3ea56c5a918",
+      "class_hash": "0x48200179fb7eed07f326b4588955b217c48ef07132d01f306af88f100738329",
       "selector": "0x162da33a4585851fe8d3af3c2a9c60b557814e221e0d4f30ff0b2189d9c7775",
       "entry_point_type": "EXTERNAL",
       "result": [],
@@ -120,7 +120,7 @@
         "0x63e14707"
       ],
       "call_type": "CALL",
-      "class_hash": "0x25ec026985a3bf9d0cc1fe17326b245dfdc3ff89b8fde106542a3ea56c5a918",
+      "class_hash": "0x48200179fb7eed07f326b4588955b217c48ef07132d01f306af88f100738329",
       "selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
       "entry_point_type": "EXTERNAL",
       "result": [

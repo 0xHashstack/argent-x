@@ -47,10 +47,11 @@ export function checkIfUpgradeAvailable(
 }
 
 export function checkIfDeprecated(walletAccount: WalletAccount): boolean {
-  if (walletAccount.showBlockingDeprecated) {
-    return true
-  }
-  return isDeprecatedTxV0(walletAccount)
+  // if (walletAccount.showBlockingDeprecated) {
+  //   return true
+  // }
+  // return isDeprecatedTxV0(walletAccount)
+  return false // ! VT: POC
 }
 
 export function partitionDeprecatedAccount(
@@ -59,6 +60,9 @@ export function partitionDeprecatedAccount(
 ): [string[], string[]] {
   const accountAddresses = accounts.map((account) => account.address)
 
+  accounts = accounts.map((acc) => {
+    return { ...acc, cairoVersion: "0", showBlockingDeprecated: false }
+  })
   if (!network.accountClassHash) {
     return [[], accountAddresses]
   }
@@ -81,6 +85,7 @@ export function partitionDeprecatedAccount(
     return partition(accountAddresses, (accountAddress) =>
       targetImplementations.some((ti) => {
         const impl = implementationsToAccountsMap[accountAddress]
+        // return true; // ! VT:
         return !!impl && num.toBigInt(impl) === ti
       }),
     )

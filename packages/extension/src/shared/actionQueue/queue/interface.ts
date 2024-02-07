@@ -12,6 +12,10 @@ export interface IActionQueue<T> {
     hash: string,
     meta: Partial<Omit<ActionQueueItemMeta, "hash" | "expires">>,
   ) => Promise<ExtQueueItem<T> | null>
+  updateItem: <U extends T>(
+    hash: string,
+    item: U,
+  ) => Promise<ExtQueueItem<T> | null>
   remove: (hash: string) => Promise<ExtQueueItem<T> | null>
   removeAll: () => Promise<void>
 }

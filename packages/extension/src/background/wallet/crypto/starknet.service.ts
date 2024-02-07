@@ -42,7 +42,11 @@ import { sortMultisigByDerivationPath } from "../../../shared/utils/accountsMult
 import { SessionError } from "../../../shared/errors/session"
 import { getAccountCairoVersion } from "../../../shared/utils/argentAccountVersion"
 import { AccountError } from "../../../shared/errors/account"
-import { STANDARD_CAIRO_0_ACCOUNT_CLASS_HASH } from "../../../shared/network/constants"
+import {
+  HASHSTACK_PLUGIN_HASH,
+  OPEN_ADDRESS,
+  STANDARD_CAIRO_0_ACCOUNT_CLASS_HASH,
+} from "../../../shared/network/constants"
 const { getSelectorFromName, calculateContractAddressFromHash } = hash
 
 export class WalletCryptoStarknetService {
@@ -59,7 +63,10 @@ export class WalletCryptoStarknetService {
     if (!session?.secret) {
       throw new SessionError({ code: "NO_OPEN_SESSION" })
     }
-    return getStarkPair(derivationPath, session.secret)
+    console.log("session secret", session) // ! VT: POC
+    const keyPair = getStarkPair(derivationPath, session.secret)
+    console.log(keyPair.getPrivate(), keyPair.pubKey)
+    return keyPair
   }
 
   public async getSignerForAccount(account: WalletAccount) {
@@ -253,17 +260,26 @@ export class WalletCryptoStarknetService {
     accountClassHash: string,
     pubKey: string,
   ): string {
+    // const constructorCallData = {
+    //   implementation: accountClassHash,
+    //   selector: getSelectorFromName("initialize"),
+    //   calldata: CallData.compile({
+    //     signer: pubKey,
+    //     guardian: "0",
+    //     _open_address: "0"
+    //   }),
+    // }
+
     const constructorCallData = {
-      implementation: accountClassHash,
-      selector: getSelectorFromName("initialize"),
-      calldata: CallData.compile({
-        signer: pubKey,
-        guardian: "0",
-      }),
+      signer: pubKey,
+      guardian: "0",
+      _open_address: OPEN_ADDRESS,
+      plugin_hash: HASHSTACK_PLUGIN_HASH,
     }
 
+    // ! VT: Removing proxy for now
     const deployAccountPayload = {
-      classHash: PROXY_CONTRACT_CLASS_HASHES[0],
+      classHash: accountClassHash,
       constructorCalldata: CallData.compile(constructorCallData),
       addressSalt: pubKey,
     }
@@ -280,21 +296,22 @@ export class WalletCryptoStarknetService {
     accountClassHash: string,
     pubKey: string,
   ) {
-    const deployAccountPayload = {
-      classHash: accountClassHash,
-      constructorCalldata: CallData.compile({
-        signer: pubKey,
-        guardian: "0",
-      }),
-      addressSalt: pubKey,
-    }
+    return this.getCairo0AccountContractAddress(accountClassHash, pubKey)
+    // const deployAccountPayload = {
+    //   classHash: accountClassHash,
+    //   constructorCalldata: CallData.compile({
+    //     signer: pubKey,
+    //     guardian: "0",
+    //   }),
+    //   addressSalt: pubKey,
+    // }
 
-    return calculateContractAddressFromHash(
-      deployAccountPayload.addressSalt,
-      deployAccountPayload.classHash,
-      deployAccountPayload.constructorCalldata,
-      0,
-    )
+    // return calculateContractAddressFromHash(
+    //   deployAccountPayload.addressSalt,
+    //   deployAccountPayload.classHash,
+    //   deployAccountPayload.constructorCalldata,
+    //   0,
+    // )
   }
 
   public async getUndeployedAccountCairoVersion(
@@ -387,7 +404,7 @@ export class WalletCryptoStarknetService {
     }
 
     const deployMultisigPayload = {
-      classHash: PROXY_CONTRACT_CLASS_HASHES[0],
+      classHash: "0", //PROXY_CONTRACT_CLASS_HASHES[0],
       constructorCalldata: CallData.compile(constructorCallData),
       addressSalt: starkPub,
     }

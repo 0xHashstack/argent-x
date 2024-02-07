@@ -110,6 +110,28 @@ export function getActionQueue<T extends AllObjects>(
     return newItem
   }
 
+  async function updateItem<U extends T>(
+    hash: string,
+    newItem: U,
+  ): Promise<ExtQueueItem<T> | null> {
+    const item = await get(hash)
+
+    if (!item) {
+      return null
+    }
+
+    const _newItem = {
+      ...newItem,
+      meta: {
+        ...item.meta,
+      },
+    }
+
+    await storage.upsert(_newItem)
+
+    return _newItem
+  }
+
   async function remove(hash: string): Promise<ExtQueueItem<T> | null> {
     const [item] = await storage.remove((item) => item.meta.hash === hash)
     return item ?? null
@@ -124,6 +146,7 @@ export function getActionQueue<T extends AllObjects>(
     getAll,
     add,
     updateMeta,
+    updateItem,
     remove,
     removeAll,
   }

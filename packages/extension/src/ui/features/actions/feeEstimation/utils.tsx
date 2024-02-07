@@ -26,6 +26,7 @@ export const useMaxFeeEstimation = (
   transactionSimulation?: ApiTransactionBulkSimulationResponse,
   isSimulationLoading?: boolean,
 ): UseMaxFeeEstimationReturnProps => {
+  console.log("useMaxFeeEstimation")
   const { data: fee, error } = useConditionallyEnabledSWR(
     !isSimulationLoading &&
       (!transactionSimulation || transactionSimulation.length === 0),

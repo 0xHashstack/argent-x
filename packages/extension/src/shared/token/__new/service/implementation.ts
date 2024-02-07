@@ -183,10 +183,11 @@ export class TokenService implements ITokenService {
     const accountsGroupedByNetwork = groupBy(accountsArray, "networkId")
     const tokensGroupedByNetwork = groupBy(tokensArray, "networkId")
     const tokenBalances: BaseTokenWithBalance[] = []
-
+    console.log("fetching fetchTokenBalancesFromOnChain")
     for (const networkId in accountsGroupedByNetwork) {
       const tokensOnCurrentNetwork = tokensGroupedByNetwork[networkId] // filter tokens based on networkId
       const network = await this.networkService.getById(networkId)
+      console.log("isMulticall", network)
       if (network.multicallAddress) {
         const balances = await this.fetchTokenBalancesWithMulticall(
           network,
@@ -203,6 +204,7 @@ export class TokenService implements ITokenService {
         tokenBalances.push(...balances)
       }
     }
+    console.log("tokenBalances", tokenBalances)
     return tokenBalances
   }
 
@@ -215,23 +217,28 @@ export class TokenService implements ITokenService {
     const accounts = accountsGroupedByNetwork[network.id]
     const calls = tokensOnCurrentNetwork
       .map((token) =>
-        accounts.map((account) =>
-          multicall.callContract({
+        accounts.map(async (account) => {
+          const _result = multicall.callContract({
             contractAddress: token.address,
             entrypoint: "balanceOf",
             calldata: [account.address],
-          }),
-        ),
+          })
+          console.log("indiv result", _result, token.address)
+          return _result
+        }),
       )
       .flat()
     const results = await Promise.allSettled(calls)
     const tokenBalances: BaseTokenWithBalance[] = []
 
+    console.log("balances fetched", results)
     for (let i = 0; i < results.length; i++) {
-      const result = results[i]
+      const result: any = results[i]
       const token = tokensOnCurrentNetwork[Math.floor(i / accounts.length)]
       const account = accounts[i % accounts.length]
-      if (result.status === "fulfilled") {
+      if (result.status === "fulfilled" && result.value.result) {
+        // ! VT: poc cause picking up incorrect tokens for network
+        console.log("item", result)
         const [low, high] = result.value.result
         const balance = uint256.uint256ToBN({ low, high }).toString()
         tokenBalances.push({
@@ -294,6 +301,7 @@ export class TokenService implements ITokenService {
     }
 
     const fetcher = fetcherWithArgentApiHeadersForNetwork(defaultNetwork.id)
+    console.log("fetcherWithArgentApiHeadersForNetwork", this.TOKENS_PRICES_URL)
     const response = await fetcher(this.TOKENS_PRICES_URL)
     const parsedResponse = ApiPriceDataResponseSchema.safeParse(response)
 

@@ -44,6 +44,7 @@ export const ApproveTransactionScreenContainer: FC<
   transactionContext = "STANDARD_EXECUTE",
   ...rest
 }) => {
+  console.log("ApproveTransactionScreenContainer")
   const [disableConfirm, setDisableConfirm] = useState(true)
   const [hasInsufficientFunds, setHasInsufficientFunds] = useState(false)
   const [showTxDetails, setShowTxDetails] = useState(false)

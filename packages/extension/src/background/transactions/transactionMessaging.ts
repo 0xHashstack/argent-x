@@ -27,6 +27,7 @@ import { isAccountV4, isAccountV5 } from "@argent/shared"
 export const handleTransactionMessage: HandleMessage<
   TransactionMessage
 > = async ({ msg, origin, background: { wallet, actionService }, respond }) => {
+  console.log("handleTransactionMessage", msg, msg.type, origin)
   switch (msg.type) {
     case "EXECUTE_TRANSACTION": {
       const { meta } = await actionService.add(
@@ -477,6 +478,7 @@ export const handleTransactionMessage: HandleMessage<
         }
         const starknetAccount = await wallet.getSelectedStarknetAccount()
         if (isAccountV4(starknetAccount)) {
+          console.log("SIMULATE_TRANSACTIONS", "usingV4")
           // Old accounts are not supported
           // This should no longer happen as we prevent deprecated accounts from being used
           return respond({
@@ -557,7 +559,10 @@ export const handleTransactionMessage: HandleMessage<
           await addEstimatedFees(estimatedFee, transactions)
           simulationWithFees = {
             simulation: result,
-            feeEstimation: estimatedFee,
+            feeEstimation: {
+              amount: "1000000000000000000",
+              suggestedMaxFee: "1000000000000000000",
+            },
           }
         }
 

@@ -25,6 +25,7 @@ export const FeeEstimationContainer: FC<TransactionsFeeEstimationProps> = ({
   transactionSimulationLoading,
   needsDeploy = false,
 }) => {
+  console.log("FeeEstimationContainer")
   const account = useAccount({ address: accountAddress, networkId })
   if (!account) {
     throw new Error("Account not found")

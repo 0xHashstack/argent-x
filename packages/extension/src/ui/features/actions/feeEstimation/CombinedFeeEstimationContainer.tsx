@@ -32,7 +32,7 @@ export const CombinedFeeEstimationContainer: FC<
   }
 
   const { feeTokenBalance } = useFeeTokenBalance(account)
-
+  console.log("CombinedFeeEstimationContainer")
   const { fee: feeSequencer, error } = useMaxFeeEstimation(
     transactions,
     actionHash,

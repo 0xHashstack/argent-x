@@ -1,4 +1,4 @@
-import { FC, useCallback, useMemo, useState } from "react"
+import { FC, useCallback, useEffect, useMemo, useState } from "react"
 
 import { useTransactionReviewV2 } from "./useTransactionReviewV2"
 import { useActionScreen } from "../hooks/useActionScreen"
@@ -42,8 +42,17 @@ import {
   isTransactionSimulationError,
 } from "../../../../shared/transactionReview/schema"
 import { TransactionReviewLabel } from "./TransactionReviewLabel"
+import { Call, hash } from "starknet"
+import { actionQueue } from "../../../../shared/actionQueue"
+import { clientActionService } from "../../../services/action"
+import { clientTransactionReviewService } from "../../../services/transactionReview"
+import { ActionItem, ExtQueueItem } from "../../../../shared/actionQueue/types"
 
 const { AlertIcon } = icons
+
+type TransactionReviewResult = Awaited<
+  ReturnType<typeof clientTransactionReviewService.simulateAndReview>
+>
 
 export interface TransactionActionScreenContainerV2Props
   extends ConfirmScreenProps {
@@ -53,6 +62,7 @@ export interface TransactionActionScreenContainerV2Props
 export const TransactionActionScreenContainerV2: FC<
   TransactionActionScreenContainerV2Props
 > = ({ transactionContext = "STANDARD_EXECUTE", ...rest }) => {
+  const [spendReview, setSpendReview] = useState(true)
   const {
     action,
     selectedAccount,
@@ -60,6 +70,7 @@ export const TransactionActionScreenContainerV2: FC<
     reject,
     rejectWithoutClose,
     closePopupIfLastAction,
+    updateAction,
   } = useActionScreen()
   if (action?.type !== "TRANSACTION") {
     throw new Error(
@@ -69,10 +80,18 @@ export const TransactionActionScreenContainerV2: FC<
 
   const navigate = useNavigate()
   const [disableConfirm, setDisableConfirm] = useState(true)
+  const [disableConfirmSpend, setDisableSpendConfirm] = useState(true)
   const [hasInsufficientFunds, setHasInsufficientFunds] = useState(false)
   const [userClickedAddFunds, setUserClickedAddFunds] = useAtom(
     userClickedAddFundsAtom,
   )
+
+  const onReject = async () => {
+    await actionQueue.remove(spendAction?.meta.hash || "")
+    await reject()
+    await actionQueue.removeAll()
+    return
+  }
 
   const onSubmit = useCallback(async () => {
     const result = await approve()
@@ -84,16 +103,56 @@ export const TransactionActionScreenContainerV2: FC<
         navigate(routes.accountActivity())
       }
     }
+    await actionQueue.removeAll()
   }, [closePopupIfLastAction, navigate, approve])
 
   const {
-    data: transactionReview,
+    data: _transactionReview,
     error,
     isValidating,
   } = useTransactionReviewV2({
     calls: action.payload.transactions,
     actionHash: action.meta.hash,
+    spendReview: false,
   })
+
+  let transactionReview: TransactionReviewResult | undefined =
+    _transactionReview?.result
+  useEffect(() => {
+    if (_transactionReview && !error)
+      transactionReview = _transactionReview.result
+  }, [_transactionReview])
+
+  const {
+    data: _spendTransactionReview,
+    error: spendError,
+    isValidating: spendValidating,
+  } = useTransactionReviewV2({
+    calls: action.payload.transactions,
+    actionHash: action.meta.hash,
+    spendReview: spendReview,
+  })
+
+  let spendTransactionReview: TransactionReviewResult | undefined =
+    _spendTransactionReview?.result
+  let spendAction: ExtQueueItem<ActionItem> | null | undefined =
+    _spendTransactionReview?.action
+  useEffect(() => {
+    if (_spendTransactionReview && !spendError && !spendAction) {
+      spendTransactionReview = _spendTransactionReview.result
+      spendAction = _spendTransactionReview.action
+      setSpendReview(false)
+    }
+  }, [_spendTransactionReview])
+
+  useEffect(() => {
+    console.log(
+      "spend analysis",
+      spendTransactionReview,
+      spendError,
+      spendValidating,
+    )
+  }, [spendTransactionReview, spendError, spendValidating])
 
   const loadingOrErrorState = useMemo(() => {
     if (error) {
@@ -153,6 +212,40 @@ export const TransactionActionScreenContainerV2: FC<
       </Accordion>
     )
   }, [transactionReview])
+
+  const spendTransactionReviewSimulationError = useMemo(() => {
+    if (!spendTransactionReview) {
+      return null
+    }
+    const txSimulationErrors = spendTransactionReview.transactions.flatMap(
+      (transaction) =>
+        isTransactionSimulationError(transaction)
+          ? transaction.simulationError
+          : false,
+    )
+    // We only keep the last one as if there's more than one the first one is for the deployment of the account
+    const lastSimulation = txSimulationErrors?.[txSimulationErrors.length - 1]
+    if (!lastSimulation) {
+      return null
+    }
+
+    const errorMessage = getMessageFromSimulationError(lastSimulation)
+
+    return (
+      <Accordion size="sm" colorScheme="error" boxShadow={"menu"} allowToggle>
+        <AccordionItem>
+          <AccordionButton>
+            <AlertIcon display={"inline-block"} fontSize={"base"} mr={1} />{" "}
+            <Box as="span" flex="1" textAlign="left">
+              <TransactionReviewLabel label={lastSimulation.label} />
+            </Box>
+            <AccordionIcon />
+          </AccordionButton>
+          <AccordionPanel>{errorMessage}</AccordionPanel>
+        </AccordionItem>
+      </Accordion>
+    )
+  }, [spendTransactionReview])
 
   const transactionReviewSimulation = useMemo(() => {
     if (!transactionReview) {
@@ -261,7 +354,23 @@ export const TransactionActionScreenContainerV2: FC<
     [setUserClickedAddFunds, userClickedAddFunds],
   )
 
-  const onSubmitWithChecks = () => {
+  const onSubmitWithChecks = async (spendBorrow = false) => {
+    if (spendBorrow && spendAction) {
+      // await updateAction(_action)
+      await actionQueue.remove(action.meta.hash)
+      const result = await clientActionService.approveAndWait(spendAction)
+      if (isObject(result) && "error" in result) {
+        // stay on screen
+      } else {
+        closePopupIfLastAction()
+        if (location.pathname === routes.swap()) {
+          navigate(routes.accountActivity())
+        }
+      }
+      await actionQueue.removeAll()
+      return
+    }
+
     if (hasInsufficientFunds) {
       navigate(routes.funding(), { state: { showOnTop: true } })
       setUserClickedAddFunds(true)
@@ -273,6 +382,7 @@ export const TransactionActionScreenContainerV2: FC<
       multisigModalDisclosure.onOpen()
       return
     }
+    if (spendAction) await actionQueue.remove(spendAction.meta.hash)
     void onSubmit()
   }
 
@@ -292,7 +402,21 @@ export const TransactionActionScreenContainerV2: FC<
           error={error}
         />
       )}
+      <p>Spend:</p>
+      {selectedAccount && spendTransactionReview?.enrichedFeeEstimation && (
+        <FeeEstimationContainerV2
+          onErrorChange={setDisableSpendConfirm}
+          onFeeErrorChange={onShowAddFunds}
+          transactionSimulationLoading={spendValidating}
+          fee={spendTransactionReview?.enrichedFeeEstimation}
+          networkId={selectedAccount.networkId}
+          accountAddress={selectedAccount.address}
+          needsDeploy={selectedAccount.needsDeploy}
+          error={spendError}
+        />
+      )}
       {transactionReviewSimulationError}
+      {spendTransactionReviewSimulationError}
     </WithActionScreenErrorFooter>
   )
 
@@ -314,9 +438,11 @@ export const TransactionActionScreenContainerV2: FC<
         confirmButtonIsLoading={actionIsApproving}
         confirmButtonDisabled={disableConfirm}
         confirmButtonText={confirmButtonText}
+        showSpendConfirmButton={spendError || spendValidating ? false : true}
+        spendButtonLoading={spendValidating}
         onSubmit={onSubmitWithChecks}
         showHeader={true}
-        onReject={() => void reject()}
+        onReject={onReject}
         footer={footer}
         {...rest}
       >

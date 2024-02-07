@@ -54,6 +54,7 @@ export class KeyValueStorage<
     }
     try {
       this.storageImplementation = browser.storage[options.areaName]
+      console.log("storageee", this.storageImplementation)
       if (!this.storageImplementation) {
         throw new Error()
       }
